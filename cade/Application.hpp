@@ -2,7 +2,6 @@
 #include <SFML/Graphics.hpp>
 
 #include "Chip8.hpp"
-#include "MemoryViewer.hpp"
 
 class Application
 {
