@@ -56,7 +56,6 @@ void Application::setRenderingMode(RenderMode mode)
 		break;
 	}
 	chip.drawPending() = true;
-	// Hide the pixel
 	mPixel.setPosition(-16.f, -16.f);
 }
 
