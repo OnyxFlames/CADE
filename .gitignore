@@ -328,3 +328,9 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder 
 .mfractor/
+
+# Resources I don't own
+# ROMS can be aquired online
+fonts/
+roms/
+myroms/
