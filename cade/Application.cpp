@@ -1,234 +1,344 @@
 #include "Application.hpp"
 
-#include "Debug.hpp"
 
-#include <sstream>
-
-void Application::setRenderingMode(RenderingMode mode)
+void Application::setRenderingMode(RenderMode mode)
 {
-	switch (mode)
+	mRenderingMode = mode;
+	switch (mRenderingMode)
 	{
-	case RenderingMode::Classic:
-		pixel.setSize({ 16.f, 16.f });
-		pixel.setScale(1.0f, 1.0f);
-		pixel.setFillColor(pixel_color);
+	case RenderMode::Classic:
+		mPixel.setSize({ 16.f, 16.f });
+		mPixel.setFillColor(sf::Color::White);
+		mRenderSprite.setColor(sf::Color::White);
+		mPixel.setScale({ 1.f, 1.f });
 		break;
-	case RenderingMode::HighRes:
-		pixel.setSize({ 16.f, 16.f });
-		pixel.setScale(0.935f, 0.935f);
-		pixel.setFillColor(pixel_color);
+	case RenderMode::ClassicRed:
+		mPixel.setSize({ 16.f, 16.f });
+		mPixel.setFillColor(sf::Color::White);
+		mRenderSprite.setColor(sf::Color::Red);
+		mPixel.setScale({ 1.f, 1.f });
 		break;
-	case RenderingMode::ColourClassic:
-		pixel.setSize({ 16.f, 16.f });
-		pixel.setScale(1.0f, 1.0f);
+	case RenderMode::ClassicGreen:
+		mPixel.setSize({ 16.f, 16.f });
+		mPixel.setFillColor(sf::Color::White);
+		mRenderSprite.setColor(sf::Color::Green);
+		mPixel.setScale({ 1.f, 1.f });
 		break;
-	case RenderingMode::ColourHighRes:
-		pixel.setSize({ 16.f, 16.f });
-		pixel.setScale(0.935f, 0.935f);
+	case RenderMode::ClassicBlue:
+		mPixel.setSize({ 16.f, 16.f });
+		mPixel.setFillColor(sf::Color::White);
+		mRenderSprite.setColor(sf::Color::Cyan);
+		mPixel.setScale({ 1.f, 1.f });
+		break;
+	case RenderMode::HighRes:
+		mPixel.setSize({ 16.f, 16.f });
+		mPixel.setFillColor(sf::Color::White);
+		mRenderSprite.setColor(sf::Color::White);
+		mPixel.setScale({0.9f, 0.9f});
+		break;
+	case RenderMode::HighResRed:
+		mPixel.setSize({ 16.f, 16.f });
+		mPixel.setFillColor(sf::Color::White);
+		mRenderSprite.setColor(sf::Color::Red);
+		mPixel.setScale({ 0.9f, 0.9f });
+		break;
+	case RenderMode::HighResGreen:
+		mPixel.setSize({ 16.f, 16.f });
+		mPixel.setFillColor(sf::Color::White);
+		mRenderSprite.setColor(sf::Color::Green);
+		mPixel.setScale({ 0.9f, 0.9f });
+		break;
+	case RenderMode::HighResBlue:
+		mPixel.setSize({ 16.f, 16.f });
+		mPixel.setFillColor(sf::Color::White);
+		mRenderSprite.setColor(sf::Color::Cyan);
+		mPixel.setScale({ 0.9f, 0.9f });
 		break;
 	}
-	chip8.drawPending() = true;
+	chip.drawPending() = true;
+	// Hide the pixel
+	mPixel.setPosition(-16.f, -16.f);
 }
 
 Application::Application()
-	:	window(sf::VideoMode(64 * 16, 32 * 16), "CADE - Chip-8 Emulator")
+	: mWindow(sf::VideoMode(64 * 16, 32 * 16), "CADE - Chip-8 Emulator")
+	, mRenderingMode(Classic)
+//	, mv(chip.getMemory())
 {
-	debug_font.loadFromFile("../fonts/consola.ttf");
-	debug_text.setFont(debug_font);
-	debug_text.setFillColor(sf::Color::Green);
-	debug_text.setOutlineColor(sf::Color::Black);
-	debug_text.setOutlineThickness(2.f);
-	debug_text.setScale({ .50f, .50f });
+	mRenderBuffer.create(64 * 16, 32 * 16);
+	mRenderSprite.setTexture(mRenderBuffer.getTexture());
+	mRenderBuffer.setSmooth(true);
 
-	debug_keys_active = debug_text;
-	debug_keys_active.setPosition(0, 20.f);
-	debug_keys_active.setString("Implement me!\n");
-
-	debug_instruction = debug_text;
-
-	printf("F1 to restart\nShift + Escape to exit.\n");
-
-	setRenderingMode(current_mode);
-
-	render_buffer.create(64 * 16, 32 * 16);
-	buffer_sprite.setTexture(render_buffer.getTexture());
+	setRenderingMode(mRenderingMode);
+#if defined(DEBUG_HUD)
+	mFont.loadFromFile("../resources/fonts/consola.ttf");
+	mTexts.setFont(mFont);
+	mTexts.setScale(0.55f, 0.55f);
+	mTexts.setFillColor(sf::Color::Green);
+	mTexts.setOutlineColor(sf::Color::Black);
+	mTexts.setOutlineThickness(2.0f);
+#endif
+	printf("Escape to pause.\nShift + Escape to exit.\nF1 to reset.\nF2 to load ROM.\nPage Up to swap render modes\n");
 }
 
 
 Application::~Application()
 {
-
 }
 
-void Application::loadFile(char * filename)
+Chip8 & Application::getCPU()
 {
-	chip8.loadFile(filename);
-}
-
-
-static int8_t sfml_to_chip8(sf::Keyboard::Key key)
-{
-	switch (key)
-	{
-	case sf::Keyboard::Num1: return 0x1;
-	case sf::Keyboard::Num2: return 0x2;
-	case sf::Keyboard::Num3: return 0x3;
-	case sf::Keyboard::Num4: return 0xC;
-	case sf::Keyboard::Q: return 0x4;
-	case sf::Keyboard::W: return 0x5;
-	case sf::Keyboard::E: return 0x6;
-	case sf::Keyboard::R: return 0xD;
-	case sf::Keyboard::A: return 0x7;
-	case sf::Keyboard::S: return 0x8;
-	case sf::Keyboard::D: return 0x9;
-	case sf::Keyboard::F: return 0xE;
-	case sf::Keyboard::Z: return 0xA;
-	case sf::Keyboard::X: return 0x0;
-	case sf::Keyboard::C: return 0xB;
-	case sf::Keyboard::V: return 0xF;
-	default: return -1;
-	}
+	return chip;
 }
 
 
 void Application::process_events()
 {
 	sf::Event e;
-	while (window.pollEvent(e))
+	while (mWindow.pollEvent(e))
 	{
-		//chip8.handleEvents(e);
 		switch (e.type)
 		{
 		case sf::Event::Closed:
-			window.close();
+			mWindow.close();
 			break;
 		case sf::Event::KeyPressed:
 			switch (e.key.code)
 			{
 			case sf::Keyboard::Escape:
 				if (sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) || sf::Keyboard::isKeyPressed(sf::Keyboard::RShift))
-					window.close();
+					mWindow.close();
+				else
+					mPaused = !mPaused;
 				break;
 			case sf::Keyboard::F1:
-				chip8.resetCPU();
+				chip.resetCPU();
 				break;
-			case sf::Keyboard::BackSpace:
-				if (current_mode == Classic)
-					current_mode = (RenderingMode)(ModeCount - 1);
+			case sf::Keyboard::F2:
+#if defined(PLATFORM_WINDOWS)
+			{
+				chip.resetCPU();
+				TCHAR fileBuff[260] = { 0 };
+				OPENFILENAMEA ofn;
+				ZeroMemory(&ofn, sizeof(ofn));
+				ofn.lStructSize = sizeof(ofn);
+				ofn.hwndOwner = NULL;
+				ofn.lpstrFile = fileBuff;
+				ofn.nMaxFile = sizeof(fileBuff);
+				if (GetOpenFileNameA(&ofn) == 0)
+					printf("Failed to load ROM '%s'\n", ofn.lpstrFile);
 				else
-					current_mode = (RenderingMode)(current_mode - 1);
-				setRenderingMode(current_mode);
-				break;
-			case sf::Keyboard::Enter:
-				if (current_mode == (RenderingMode)(ModeCount - 1))
-					current_mode = Classic;
-				else
-					current_mode = (RenderingMode)(current_mode + 1);
-				setRenderingMode(current_mode);
-				break;
-				default:
 				{
-					if (sfml_to_chip8(e.key.code) != -1 && sfml_to_chip8(e.key.code) <= 0x0F)
-						chip8.pressKey(sfml_to_chip8(e.key.code));
+					// Just the rom name
+					printf("Loading ROM '%s'\n", ofn.lpstrFile);
+					// Need the full path
+					chip.loadROM(ofn.lpstrFile);
 				}
 			}
-		case sf::Event::KeyReleased:
-			//if (sfml_to_chip8(e.key.code) != -1 && sfml_to_chip8(e.key.code) <= 0x0F)
-				//chip8.pressKey(sfml_to_chip8(e.key.code));
+#endif
+				break;
+			case sf::Keyboard::PageUp:
+				if (mRenderingMode + 1 == RenderMode::RenderModeCount)
+					setRenderingMode(RenderMode::Classic);
+				else
+					setRenderingMode((RenderMode)(mRenderingMode + 1));
+				break;
+			case sf::Keyboard::Enter:
+				if (mPaused)
+					chip.execute();
+				break;
+			case sf::Keyboard::Num1:
+				chip.setKey(0x1);
+				break;
+			case sf::Keyboard::Num2:
+				chip.setKey(0x2);
+				break;
+			case sf::Keyboard::Num3:
+				chip.setKey(0x3);
+				break;
+			case sf::Keyboard::Num4:
+				chip.setKey(0xC);
+				break;
+			case sf::Keyboard::Q:
+				chip.setKey(0x4);
+				break;
+			case sf::Keyboard::W:
+				chip.setKey(0x5);
+				break;
+			case sf::Keyboard::E:
+				chip.setKey(0x6);
+				break;
+			case sf::Keyboard::R:
+				chip.setKey(0xD);
+				break;
+			case sf::Keyboard::A:
+				chip.setKey(0x7);
+				break;
+			case sf::Keyboard::S:
+				chip.setKey(0x8);
+				break;
+			case sf::Keyboard::D:
+				chip.setKey(0x9);
+				break;
+			case sf::Keyboard::F:
+				chip.setKey(0xE);
+				break;
+			case sf::Keyboard::Z:
+				chip.setKey(0xA);
+				break;
+			case sf::Keyboard::X:
+				chip.setKey(0x0);
+				break;
+			case sf::Keyboard::C:
+				chip.setKey(0xB);
+				break;
+			case sf::Keyboard::V:
+				chip.setKey(0xF);
+				break;
+			}
 			break;
+		case sf::Event::KeyReleased:
+			switch (e.key.code)
+			{
+			case sf::Keyboard::Num1:
+				chip.releaseKey(0x1);
+				break;
+			case sf::Keyboard::Num2:
+				chip.releaseKey(0x2);
+				break;
+			case sf::Keyboard::Num3:
+				chip.releaseKey(0x3);
+				break;
+			case sf::Keyboard::Num4:
+				chip.releaseKey(0xC);
+				break;
+			case sf::Keyboard::Q:
+				chip.releaseKey(0x4);
+				break;
+			case sf::Keyboard::W:
+				chip.releaseKey(0x5);
+				break;
+			case sf::Keyboard::E:
+				chip.releaseKey(0x6);
+				break;
+			case sf::Keyboard::R:
+				chip.releaseKey(0xD);
+				break;
+			case sf::Keyboard::A:
+				chip.releaseKey(0x7);
+				break;
+			case sf::Keyboard::S:
+				chip.releaseKey(0x8);
+				break;
+			case sf::Keyboard::D:
+				chip.releaseKey(0x9);
+				break;
+			case sf::Keyboard::F:
+				chip.releaseKey(0xE);
+				break;
+			case sf::Keyboard::Z:
+				chip.releaseKey(0xA);
+				break;
+			case sf::Keyboard::X:
+				chip.releaseKey(0x0);
+				break;
+			case sf::Keyboard::C:
+				chip.releaseKey(0xB);
+				break;
+			case sf::Keyboard::V:
+				chip.releaseKey(0xF);
+				break;
+			}
 		}
 	}
+	//mv.process_events();
 }
 
 void Application::update(sf::Time dt)
 {
-	static uint64_t frame_rate = 0;
-	elapsed_timer += dt;
-	update_timer += dt;
-	frametime += dt;
-	// timer tick rate
-	if (elapsed_timer >= sf::seconds(chip8.getTimerRate()))
-	{
-		if (chip8.delayTimer() > 0)
-			chip8.delayTimer()--;
-		if (chip8.soundTimer() > 0)
-			chip8.soundTimer()--;
-		elapsed_timer = sf::Time::Zero;
-	}
-	// execution rate
-	if (update_timer >= sf::seconds(chip8.getCPURate()))
-	{
-		chip8.execute();
-		update_timer = sf::Time::Zero;
-	}
-	++frame_rate;
-	if (frametime.asSeconds() >= 1.f)
-	{
-		debug_text.setString(std::to_string(frame_rate));
-		frame_rate = 0;
-		frametime = sf::Time::Zero;
-	}
-
+#if defined(DEBUG_HUD)
+	// update debug stuff
 	std::stringstream ss;
 
-	ss << "I: " << chip8.indexRegister() << "\n";
-	ss << "PC: " << chip8.programCounter() << " - " << std::hex << std::setw(4) << std::setfill('0');
-	chip8.programCounter() -= 2;
-	ss << chip8.fetch() << std::dec << "\n";
-	ss << "DT: " << (uint16_t)chip8.delayTimer() << "\n";
-	ss << "ST: " << (uint16_t)chip8.soundTimer() << "\n";
-	ss << "SP: " << chip8.stackSize() << "\n";
-	ss << "Program Size: " << chip8.programSize() << "\n";
-	ss << "Awaiting key: " << (chip8.keyWaiting() ? "true" : "false") << "\n";
-	ss << "Draw Queue: " << (chip8.drawPending() ? "true" : "false") << "\n";
+	ss << "PC: " << chip.getProgramCounter() << "\t";
+	ss << "I: " << chip.getIndexRegister() << "\t";
+	ss << "DT: " << (uint16_t)chip.getDelayTimer() << "\t";
+	ss << "ST: " << (uint16_t)chip.getSoundTimer() << "\t";
+	ss << "SP: " << (uint16_t)(chip.getStackTop() - chip.getStack().data()) << "\n";
+	//ss << "Needs key: " << (chip.mWaitingOnKey ? "true" : "false") << "\n";
 
-	debug_keys_active.setString(ss.str());
-
-}
-static sf::Color randomColor()
-{
-	sf::Color options[] = 
+	for (uint8_t j = 0; j < 16; j++)
 	{
-		sf::Color::Red - sf::Color(100, 0, 0, 0),
-		sf::Color::Green - sf::Color(0, 100, 0, 0),
-		sf::Color::Blue - sf::Color(0, 0, 100, 0),
-	};
-	return options[rand() % 3];
+		ss << "V" << std::hex << std::setw(1) << (uint16_t)j << "(" <<
+			std::setw(2) << std::setfill('0') << (uint16_t)chip.getRegisters()[j] << ")\n";
+	}
+
+	for (uint8_t i = 0; i < 16; i++)
+		if (chip.getKeys()[i])
+			ss << "Key: " << std::hex << (uint16_t)i << std::dec << "\n";
+
+	mTexts.setString(ss.str());
+#endif
+
+	if (mPaused)
+		return;
+
+	static sf::Time elapsed_cpu = sf::Time::Zero, elapsed_timer = sf::Time::Zero;
+	elapsed_cpu += dt;
+	elapsed_timer += dt;
+	if (elapsed_cpu.asSeconds() > (1.f / chip.getClockSpeed()))
+	{
+		chip.execute();
+		elapsed_cpu = sf::Time::Zero;
+	}
+	if (elapsed_timer.asSeconds() > (1.f / 60.f))
+	{
+		if (chip.getDelayTimer() > 0)
+			chip.getDelayTimer()--;
+		if (chip.getSoundTimer() > 0)
+			chip.getSoundTimer()--;
+		elapsed_timer = sf::Time::Zero;
+	}
+	//mv.update(dt);
 }
 
 void Application::render()
 {
-	if (chip8.drawPending())
+	if (chip.drawPending())
 	{
-		render_buffer.clear();
-		for (uint16_t y_line = 0; y_line < 32; y_line++)
+		mRenderBuffer.clear(sf::Color(64, 64, 64));
+		for (int16_t y_line = 0; y_line < 32; y_line++)
 		{
-			for (uint16_t x_line = 0; x_line < 64; x_line++)
+			for (int16_t x_line = 0; x_line < 64; x_line++)
 			{
-				auto gfx = chip8.graphics();
-				if (gfx[(x_line + (y_line * 64))] == 1)
+				if (chip.getGraphics()[(x_line + (y_line * 64))] == 1)
 				{
-					pixel.setPosition(x_line * 16.f, y_line * 16.f);
-					if (current_mode == RenderingMode::ColourClassic || current_mode == RenderingMode::ColourHighRes)
-						pixel.setFillColor(randomColor());
-					render_buffer.draw(pixel);
+					mPixel.setPosition(x_line * 16.f, y_line * 16.f);
+					mRenderBuffer.draw(mPixel);
 				}
 			}
 		}
-		render_buffer.display();
-		chip8.drawPending() = false;
+		mRenderBuffer.display();
+		chip.drawPending() = false;
 	}
-	window.clear();
-	window.draw(buffer_sprite);
-	window.draw(debug_text);
-	window.draw(debug_keys_active);
-	window.display();
+	mWindow.clear();
+	mWindow.draw(mRenderSprite);
+	mWindow.draw(mTexts);
+	if (mPaused)
+	{
+		sf::RectangleShape paused_shape;
+		paused_shape.setSize({ (float)mWindow.getSize().x, (float)mWindow.getSize().y });
+		paused_shape.setFillColor(sf::Color(0, 0,0, 192));
+		mWindow.draw(paused_shape);
+	}
+	mWindow.display();
+	//mv.render();
 }
 
 void Application::run()
 {
 	sf::Clock runtime_clock;
-	while (window.isOpen())
+	while (mWindow.isOpen())
 	{
 		process_events();
 		update(runtime_clock.restart());

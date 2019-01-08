@@ -1,67 +1,50 @@
 #pragma once
 
-/*
-	Chip8 CPU class
-
-	TODO: Add support for SCHIP8 and Megachip8 architectures
-	Maybe allow for emulating as ETI 660, or
-*/
-
 #include "Common.hpp"
 
-#include "SFML/Graphics.hpp"
+constexpr uint16_t chip8_res_x = 64, chip8_res_y = 32;
+constexpr uint16_t schip48_res_x = 128, schip48_res_y = 64;
 
 class Chip8
 {
 private:
-	const float TIMER_UPDATE_RATE = 1.f / 60.f;
-	const float CPU_CLOCK_RATE = 1.f / 1.0f;
-	uint16_t mProgramSize = 0;
-	std::array<uint8_t, 4096> mMemory{ 0 };
-	std::array<uint8_t, 16> mRegisters{ 0 };
-	std::array<uint8_t, 64> mKeys{ 0 };
-
+	float mClockSpeed = 500.f;
+	void invalidOperation();
+	std::array<byte_t, 4096> mMemory{ 0 };
 	uint16_t mIndexRegister = 0;
 	uint16_t mProgramCounter = 0x200;
-
-	std::array<bool, 64 * 32> mGraphics{ false };
-
+	bool mDrawPending = false;
+	std::vector<byte_t> mGraphics;
 	uint8_t mDelayTimer = 0;
 	uint8_t mSoundTimer = 0;
-
 	std::array<uint16_t, 16> mStack{ 0 };
-	uint16_t* mStackPointer{ nullptr };
-	// Did the CPU recently update the graphics buffer?
-	bool mDrawPending = true;
-	bool mKeyWaiting = false;
-	void invalidOperation() const;
+	uint16_t* mStackTop = nullptr;
+	std::array<uint8_t, 16> mRegisters{ 0 };
+	std::array<bool, 16> mKeys { false };
+	bool mWaitingOnKey = false;
+	int8_t mKeyRegister = -1;
+	bool mRomLoaded = false;
 public:
-	void resetCPU();
-	bool& drawPending();
-	const bool keyWaiting() const;
-	int8_t mWaitingKey = -1;
-	uint16_t fetch();
-	void handleEvents(const sf::Event& event);
-	void execute();
+	// mWaitingOnKey = false;
 	Chip8();
 	~Chip8();
-	void loadFile(const char* filename);
-	const float getTimerRate() const;
-	const float getCPURate() const;
-
-	uint8_t& delayTimer();
-	uint8_t& soundTimer();
-
-	uint16_t& indexRegister();
-	uint16_t& programCounter();
-	const uint16_t& programSize() const;
-
-	std::array<bool, 64 * 32>& graphics();
-	std::array<uint16_t, 16>& stack();
-	uint16_t& stackTop();
-	uint32_t stackSize();
-
-	void pressKey(int8_t key);
+	uint16_t fetch();
+	void resetCPU();
+	void loadROM(char* ROMpath);
+	void execute();
+	float& getClockSpeed();
+	std::array<byte_t, 4096>& getMemory();
+	uint16_t& getIndexRegister();
+	uint16_t& getProgramCounter();
+	bool& drawPending();
+	std::vector<byte_t>& getGraphics();
+	uint8_t& getDelayTimer();
+	uint8_t& getSoundTimer();
+	std::array<uint16_t, 16>& getStack();
+	uint16_t*& getStackTop();
+	void setKey(int8_t key);
 	void releaseKey(int8_t key);
+	std::array<bool, 16>& getKeys();
+	std::array<uint8_t, 16>& getRegisters();
 };
 
